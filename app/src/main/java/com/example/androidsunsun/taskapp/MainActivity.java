@@ -1,5 +1,7 @@
 package com.example.androidsunsun.taskapp;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -63,7 +65,6 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
-
         // ListViewを長押ししたときの処理
         mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
@@ -87,6 +88,17 @@ public class MainActivity extends AppCompatActivity {
                         mRealm.beginTransaction();
                         results.deleteAllFromRealm();
                         mRealm.commitTransaction();
+
+                        Intent resultIntent= new Intent(getApplicationContext(),TaskAlarmReceiver.class);
+                        PendingIntent resultPendingIntent = PendingIntent.getBroadcast(
+                                MainActivity.this,
+                                task.getId(),
+                                resultIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                        );
+
+                        AlarmManager alarmManager = (AlarmManager)getSystemService(ALARM_SERVICE);
+                        alarmManager.cancel(resultPendingIntent);
 
                         reloadListView();
                     }
