@@ -10,6 +10,8 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 
 import io.realm.Realm;
@@ -17,9 +19,8 @@ import io.realm.RealmChangeListener;
 import io.realm.RealmResults;
 import io.realm.Sort;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     public final static String EXTRA_TASK = "com.example.androidsunsun.taskapp.TASK";
-
     private Realm mRealm;
     private RealmChangeListener mRealmListener = new RealmChangeListener() {
         @Override
@@ -29,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
     };
     private ListView mListView;
     private TaskAdapter mTaskAdapter;
+    private int taskId;
+    private Button sortButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,10 +47,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        sortButton = (Button) findViewById(R.id.sort_button);
+        sortButton.setOnClickListener(this);
         // Realmの設定
         mRealm = Realm.getDefaultInstance();
         mRealm.addChangeListener(mRealmListener);
-
         // ListViewの設定
         mTaskAdapter = new TaskAdapter(MainActivity.this);
         mListView = (ListView) findViewById(R.id.listView1);
@@ -61,22 +65,18 @@ public class MainActivity extends AppCompatActivity {
 
                 Intent intent = new Intent(MainActivity.this, InputActivity.class);
                 intent.putExtra(EXTRA_TASK, task.getId());
-
                 startActivity(intent);
             }
         });
+
         // ListViewを長押ししたときの処理
         mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-
                 // タスクを削除する
-
                 final Task task = (Task) parent.getAdapter().getItem(position);
-
                 // ダイアログを表示する
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-
                 builder.setTitle("削除");
                 builder.setMessage(task.getTitle() + "を削除しますか");
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -89,35 +89,46 @@ public class MainActivity extends AppCompatActivity {
                         results.deleteAllFromRealm();
                         mRealm.commitTransaction();
 
-                        Intent resultIntent= new Intent(getApplicationContext(),TaskAlarmReceiver.class);
+                        Intent resultIntent = new Intent(getApplicationContext(), TaskAlarmReceiver.class);
                         PendingIntent resultPendingIntent = PendingIntent.getBroadcast(
                                 MainActivity.this,
                                 task.getId(),
                                 resultIntent,
                                 PendingIntent.FLAG_UPDATE_CURRENT
                         );
-
-                        AlarmManager alarmManager = (AlarmManager)getSystemService(ALARM_SERVICE);
+                        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
                         alarmManager.cancel(resultPendingIntent);
 
                         reloadListView();
                     }
                 });
                 builder.setNegativeButton("CANCEL", null);
-
                 AlertDialog dialog = builder.create();
                 dialog.show();
-
                 return true;
             }
         });
-
         reloadListView();
     }
 
-    private void reloadListView() {
-        // Realmデータベースから、「全てのデータを取得して新しい日時順に並べた結果」を取得
+    @Override
+    public void onClick(View v) {
+        EditText categoryEdit = (EditText) findViewById(R.id.category_list);
+        String category = categoryEdit.getText().toString();
+        if (v.getId() == R.id.sort_button) {
+            RealmResults<Task> taskRealmResults = mRealm.where(Task.class).equalTo("category", category).findAllSorted("date", Sort.DESCENDING);
+            // 上記の結果を、TaskList としてセットする
+            mTaskAdapter.setTaskList(mRealm.copyFromRealm(taskRealmResults));
+            // TaskのListView用のアダプタに渡す
+            mListView.setAdapter(mTaskAdapter);
+            mTaskAdapter.notifyDataSetChanged();
+        }
+    }
+
+    public void reloadListView() {
+        // Realmデータベースから、「全てのデータを取得して新しい日時順に並べた結果」を取得　（すべての情報を取得するだけの場合、".findAll()"とする）
         RealmResults<Task> taskRealmResults = mRealm.where(Task.class).findAllSorted("date", Sort.DESCENDING);
+        //↑変数
         // 上記の結果を、TaskList としてセットする
         mTaskAdapter.setTaskList(mRealm.copyFromRealm(taskRealmResults));
         // TaskのListView用のアダプタに渡す
@@ -129,7 +140,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
         mRealm.close();
     }
 }

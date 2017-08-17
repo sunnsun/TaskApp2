@@ -18,7 +18,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 
-
 import io.realm.Realm;
 import io.realm.RealmResults;
 
@@ -26,7 +25,7 @@ public class InputActivity extends AppCompatActivity {
 
     private int mYear, mMonth, mDay, mHour, mMinute;
     private Button mDateButton, mTimeButton;
-    private EditText mTitleEdit, mContentEdit,mCategory;
+    private EditText mTitleEdit, mContentEdit, mCategory;
     private Task mTask;
 
     private View.OnClickListener mOnDateClickListener = new View.OnClickListener() {
@@ -39,7 +38,7 @@ public class InputActivity extends AppCompatActivity {
                             mYear = year;
                             mMonth = monthOfYear;
                             mDay = dayOfMonth;
-                            String dateString = mYear + "/" + String.format("%02d",(mMonth + 1)) + "/" + String.format("%02d", mDay);
+                            String dateString = mYear + "/" + String.format("%02d", (mMonth + 1)) + "/" + String.format("%02d", mDay);
                             mDateButton.setText(dateString);
                         }
                     }, mYear, mMonth, mDay);
@@ -76,7 +75,6 @@ public class InputActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_input);
-
         // ActionBarを設定する
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -85,16 +83,14 @@ public class InputActivity extends AppCompatActivity {
         }
 
         // UI部品の設定
-        mDateButton = (Button)findViewById(R.id.date_button);
+        mDateButton = (Button) findViewById(R.id.date_button);
         mDateButton.setOnClickListener(mOnDateClickListener);
-        mTimeButton = (Button)findViewById(R.id.times_button);
+        mTimeButton = (Button) findViewById(R.id.times_button);
         mTimeButton.setOnClickListener(mOnTimeClickListener);
         findViewById(R.id.done_button).setOnClickListener(mOnDoneClickListener);
-        mTitleEdit = (EditText)findViewById(R.id.title_edit_text);
-        mContentEdit = (EditText)findViewById(R.id.content_edit_text);
-        mCategory = (EditText)findViewById(R.id.category_edit_text);
-
-
+        mTitleEdit = (EditText) findViewById(R.id.title_edit_text);
+        mContentEdit = (EditText) findViewById(R.id.content_edit_text);
+        mCategory = (EditText) findViewById(R.id.category_edit_text);
 
         // EXTRA_TASK から Task の id を取得して、 id から Task のインスタンスを取得する
         Intent intent = getIntent();
@@ -115,7 +111,7 @@ public class InputActivity extends AppCompatActivity {
             // 更新の場合
             mTitleEdit.setText(mTask.getTitle());
             mContentEdit.setText(mTask.getContents());
-            mCategory.setText(mCategory.getText());
+            mCategory.setText(mTask.getCategory());
 
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(mTask.getDate());
@@ -125,50 +121,51 @@ public class InputActivity extends AppCompatActivity {
             mHour = calendar.get(Calendar.HOUR_OF_DAY);
             mMinute = calendar.get(Calendar.MINUTE);
 
-            String dateString = mYear + "/" + String.format("%02d",(mMonth + 1)) + "/" + String.format("%02d", mDay);
+            String dateString = mYear + "/" + String.format("%02d", (mMonth + 1)) + "/" + String.format("%02d", mDay);
             String timeString = String.format("%02d", mHour) + ":" + String.format("%02d", mMinute);
             mDateButton.setText(dateString);
             mTimeButton.setText(timeString);
         }
     }
+
     private void addTask() {
         Realm realm = Realm.getDefaultInstance();
-
+        //以下、realmに保存するプログラム
         realm.beginTransaction();
 
         if (mTask == null) {
-            // 新規作成の場合
+            // 新規作成の場合、Taskをインスタンスし生成する
             mTask = new Task();
 
             RealmResults<Task> taskRealmResults = realm.where(Task.class).findAll();
-
-            int identifier;
-            if (taskRealmResults.max("id") != null) {
-                identifier = taskRealmResults.max("id").intValue() + 1;
+            //realm内のどこ(taskクラス）から、すべて（findAll)の情報を取得する
+            int identifier; //identifier=taskId
+            if (taskRealmResults.max("id") != null) {                       //id!=nullの場合
+                identifier = taskRealmResults.max("id").intValue() + 1;     //identifier(taskId)+1
             } else {
-                identifier = 0;
+                identifier = 0;     //realmの主キー(primary key)は新規の場合、"0"からスタートする
             }
             mTask.setId(identifier);
         }
-
+        //realmから取得するもの（TitleEdit,ContentEdit,Category)を変数に入れる。
         String title = mTitleEdit.getText().toString();
         String content = mContentEdit.getText().toString();
-        String text = mCategory.getText().toString();
-
+        String category = mCategory.getText().toString();
+        //mTaskに変数のものをセットする。
         mTask.setTitle(title);
         mTask.setContents(content);
-        mTask.setCategory(text);
-        GregorianCalendar calendar = new GregorianCalendar(mYear,mMonth,mDay,mHour,mMinute);
+        mTask.setCategory(category);
+        GregorianCalendar calendar = new GregorianCalendar(mYear, mMonth, mDay, mHour, mMinute);
         Date date = calendar.getTime();
         mTask.setDate(date);
 
-        realm.copyToRealmOrUpdate(mTask);
-        realm.commitTransaction();
-
+        realm.copyToRealmOrUpdate(mTask);       //realmに保存する情報を指定して、
+        realm.commitTransaction();              //realmに保存、反映させる。
+        //realmを閉じる。
         realm.close();
 
-        Intent resultIntent = new Intent(getApplicationContext(),TaskAlarmReceiver.class);
-        resultIntent.putExtra(MainActivity.EXTRA_TASK,mTask.getId());
+        Intent resultIntent = new Intent(getApplicationContext(), TaskAlarmReceiver.class);
+        resultIntent.putExtra(MainActivity.EXTRA_TASK, mTask.getId());
         PendingIntent resultPendingIntent = PendingIntent.getBroadcast(
                 this,
                 mTask.getId(),
@@ -176,10 +173,7 @@ public class InputActivity extends AppCompatActivity {
                 PendingIntent.FLAG_UPDATE_CURRENT
         );
 
-        AlarmManager alarmManager = (AlarmManager)getSystemService(ALARM_SERVICE);
-        alarmManager.set(AlarmManager.RTC_WAKEUP,calendar.getTimeInMillis(),resultPendingIntent);
-    }
-    public void category(View view){
-
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), resultPendingIntent);
     }
 }
