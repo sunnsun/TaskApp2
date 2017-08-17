@@ -136,7 +136,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // 表示を更新するために、アダプターにデータが変更されたことを知らせる
         mTaskAdapter.notifyDataSetChanged();
     }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
